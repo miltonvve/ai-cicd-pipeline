@@ -2,6 +2,8 @@
 
 🚀 **Modern CI/CD Pipeline with AI Integration for GenAI Guru Projects**
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/miltonvve/ai-cicd-pipeline)
+
 A comprehensive, production-ready CI/CD pipeline that leverages artificial intelligence to automate code review, testing, deployment decisions, and monitoring for modern software development.
 
 ## 🎯 Overview
