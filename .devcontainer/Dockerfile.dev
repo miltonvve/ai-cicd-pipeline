@@ -1,0 +1,63 @@
+# Use Microsoft's devcontainer base image for polyglot development
+FROM mcr.microsoft.com/devcontainers/base:ubuntu-22.04
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    wget \
+    git \
+    vim \
+    nano \
+    jq \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python 3.11
+RUN apt-get update && apt-get install -y \
+    software-properties-common \
+    && add-apt-repository ppa:deadsnakes/ppa \
+    && apt-get update \
+    && apt-get install -y \
+    python3.11 \
+    python3.11-pip \
+    python3.11-dev \
+    python3.11-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Python 3.11 as default
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 \
+    && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 \
+    && update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
+
+# Install Node.js 20
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs
+
+# Install global Python packages
+RUN pip install --upgrade pip \
+    && pip install poetry \
+    && pip install black isort flake8 mypy pytest pytest-cov
+
+# Install global Node.js packages
+RUN npm install -g typescript ts-node jest eslint prettier
+
+# Set working directory
+WORKDIR /workspace
+
+# Create non-root user
+ARG USERNAME=vscode
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+
+# Configure sudo for the vscode user
+RUN groupadd --gid $USER_GID $USERNAME \
+    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
+    && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
+    && chmod 0440 /etc/sudoers.d/$USERNAME
+
+# Switch to non-root user
+USER $USERNAME
+
+# Default command
+CMD ["bash"]

@@ -1,0 +1,74 @@
+name: AI-Integrated DevContainer CI/CD
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test-command:
+          - name: 'Python Tests'
+            command: 'python -m pytest tests/ -v --cov=scripts --cov-report=xml'
+          - name: 'Python Lint'
+            command: 'flake8 scripts/ tests/'
+          - name: 'Python Type Check'
+            command: 'mypy scripts/'
+          - name: 'Python Format Check'
+            command: 'black --check scripts/ tests/'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run ${{ matrix.test-command.name }} in Dev Container
+        uses: devcontainers/ci@v0.3
+        with:
+          cacheFrom: ghcr.io/${{ github.repository }}/devcontainer:main
+          push: never
+          runCmd: ${{ matrix.test-command.command }}
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Security Scan in Dev Container
+        uses: devcontainers/ci@v0.3
+        with:
+          cacheFrom: ghcr.io/${{ github.repository }}/devcontainer:main
+          push: never
+          runCmd: 'pip install bandit safety && bandit -r scripts/ && safety check --json'
+
+  build-and-push-image:
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    needs: [test, security-scan]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Dev Container image
+        uses: devcontainers/ci@v0.3
+        with:
+          imageName: ghcr.io/${{ github.repository }}/devcontainer
+          cacheFrom: ghcr.io/${{ github.repository }}/devcontainer:main
+          push: always
